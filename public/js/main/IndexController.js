@@ -9,6 +9,7 @@ export default function IndexController(container) {
   this._lostConnectionToast = null;
   this._openSocket();
   this._registerServiceWorker();
+  this._trackServiceWorkerChange();
 }
 
 IndexController.prototype._registerServiceWorker = function() {
@@ -44,19 +45,31 @@ IndexController.prototype._registerServiceWorker = function() {
   });
 };
 
+IndexController.prototype._trackServiceWorkerChange = function() {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  }) 
+}
+
 
 IndexController.prototype._trackSWInstall = function(worker) {
-  worker.addEventListener('statechange', (event) => {
-    if (event.state == 'installed') {
-      this._updateReady();
+  worker.addEventListener('statechange', () => {
+    if (worker.state == 'installed') {
+      this._updateReady(worker);
     }
   });
 }
 
-IndexController.prototype._updateReady = function() {
+IndexController.prototype._updateReady = function(worker) {
   var toast = this._toastsView.show('New version available', {
-    buttons: ['whatever']
+    buttons: ['Refresh', 'Dismiss']
   });
+
+  toast.answer.then((answer) => {
+    if(answer.toLowerCase() != 'refresh') return;
+    worker.postMessage({ action: 'refresh' });
+
+  })
 };
 // open a connection to the server for live updates
 IndexController.prototype._openSocket = function() {

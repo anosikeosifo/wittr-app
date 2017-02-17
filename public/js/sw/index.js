@@ -16,7 +16,7 @@ self.addEventListener('install', (event) => {
     })
   );
 });
-//just testing
+//testing stuff
 self.addEventListener('activate', (event) => {
   let currCacheName;
   
@@ -42,5 +42,8 @@ self.addEventListener('fetch', function(event) {
 });
 
 self.addEventListener('message', (event) => {
-  console.log('event data: ', event.data);
-})
+  console.log('some new stuff');
+  if(event.data.action == 'refresh') {
+    self.skipWaiting();
+  }
+});
