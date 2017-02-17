@@ -1,4 +1,4 @@
-import PostsView from './views/Posts';
+ import PostsView from './views/Posts';
 import ToastsView from './views/Toasts';
 import idb from 'idb';
 
@@ -13,8 +13,51 @@ export default function IndexController(container) {
 
 IndexController.prototype._registerServiceWorker = function() {
   // TODO: register service worker
+  if (!navigator.serviceWorker.register) return;
+
+  navigator.serviceWorker.register('/sw.js')
+  .then((reg) => {
+      //page didnt load with a servic worker
+    if(!navigator.serviceWorker.controller) {
+      return;
+    } 
+
+    if (reg.waiting) {
+      this._updateReady();
+      return;
+    }
+
+    if (reg.installing) {
+      reg.addEventListener('statechange', (event) => {
+        this._trackSWInstall(reg.installing);
+        return;
+      });
+    } 
+
+    reg.addEventListener('updatefound', (event) => {
+      this._trackSWInstall(reg.installing);
+      return;
+    });
+  })
+  .catch(() => {
+    console.log('An error occurred with the service worker registration');
+  });
 };
 
+
+IndexController.prototype._trackSWInstall = function(worker) {
+  worker.addEventListener('statechange', (event) => {
+    if (event.state == 'installed') {
+      this._updateReady();
+    }
+  });
+}
+
+IndexController.prototype._updateReady = function() {
+  var toast = this._toastsView.show('New version available', {
+    buttons: ['whatever']
+  });
+};
 // open a connection to the server for live updates
 IndexController.prototype._openSocket = function() {
   var indexController = this;
