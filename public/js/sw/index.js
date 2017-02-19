@@ -1,12 +1,12 @@
 //caching pages
 const urlsToCache = [
-  '/',
+  '/skeleton',
   'js/main.js',
   'css/main.css',
   'imgs/icon.png'
 ];
 
-const staticCacheName = 'wittr-static-v2'
+const staticCacheName = 'wittr-static-v5'
 
 self.addEventListener('install', (event) => {
   //event.waitUntil created room for syncronous code to be run.
@@ -34,6 +34,14 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', function(event) {
+  let requestUrl = new URL(event.request.url);
+
+  if(requestUrl.origin === location.origin) {
+    event.respondWith(caches.match('/skeleton').then(() => {
+      return; 
+    }))
+  }
+
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request);
