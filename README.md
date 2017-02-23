@@ -1,6 +1,6 @@
 # Wittr
-
-This is a silly little demo app for an offline-first course.
+This is  a follow-through implementation on the Service Woerker Udacity Course by Jake Archibald and Mike Wales
+Original Repo: https://github.com/jakearchibald/wittr
 
 # Installing
 
