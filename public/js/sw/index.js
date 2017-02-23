@@ -6,7 +6,7 @@ const urlsToCache = [
   'imgs/icon.png'
 ];
 
-const staticCacheName = 'wittr-static-v5'
+const staticCacheName = 'wittr-static-v6'
 
 self.addEventListener('install', (event) => {
   //event.waitUntil created room for syncronous code to be run.
@@ -35,11 +35,14 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', function(event) {
   let requestUrl = new URL(event.request.url);
+  console.log('requestUrl: ', requestUrl);
 
+  // checks that the request is intra-site
   if(requestUrl.origin === location.origin) {
-    event.respondWith(caches.match('/skeleton').then(() => {
-      return; 
-    }))
+    if(requestUrl.pathname === '/') {
+      event.respondWith(caches.match('/skeleton'));
+      return;
+    }
   }
 
   event.respondWith(

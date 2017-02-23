@@ -7,9 +7,31 @@ export default function IndexController(container) {
   this._postsView = new PostsView(this._container);
   this._toastsView = new ToastsView(this._container);
   this._lostConnectionToast = null;
-  this._openSocket();
   this._registerServiceWorker();
   this._trackServiceWorkerChange();
+  this._dbPromise = this.openDatabase();
+
+  this._showCachedMessages().then(() => {
+    this._openSocket();
+  })
+}
+
+IndexController.prototype._showCachedMessages = function() {
+  this._dbPromise.then((db) => {
+    //if there is no db content yet, or posts are already being displayed.
+    if(!db || this._postsView.showingPosts()) return;
+
+    //else fetch messages from idb;
+    let trx = db.transaction('wittrs');
+    let messageStore = trx.objectStore('wittrs');
+    let sortedMessages = messageStore.index('by-date');
+    return sortedMessages.getAll();
+
+  }).then((messages) => {
+    if(!messages) return;
+    this._postsView.addPosts(messages.reverse());
+  });
+
 }
 
 IndexController.prototype._registerServiceWorker = function() {
@@ -24,7 +46,7 @@ IndexController.prototype._registerServiceWorker = function() {
     } 
 
     if (reg.waiting) {
-      this._updateReady();
+      this._updateReady(reg.waiting);
       return;
     }
 
@@ -64,13 +86,14 @@ IndexController.prototype._updateReady = function(worker) {
   var toast = this._toastsView.show('New version available', {
     buttons: ['Refresh', 'Dismiss']
   });
+  console.log('worker: ', worker);
 
   toast.answer.then((answer) => {
     if(answer.toLowerCase() != 'refresh') return;
     worker.postMessage({ action: 'refresh' });
-
-  })
+  });
 };
+
 // open a connection to the server for live updates
 IndexController.prototype._openSocket = function() {
   var indexController = this;
@@ -116,8 +139,35 @@ IndexController.prototype._openSocket = function() {
   });
 };
 
+IndexController.prototype.openDatabase = function() {
+  const dbPromise = idb.open('wittr', 1, (upgradeDb) => {
+    let postStore = upgradeDb.createObjectStore('wittrs', { keyPath: 'id' })
+    postStore.createIndex('by-date', 'time');
+  });
+
+  return dbPromise;
+}
+
+IndexController.prototype.populateDatabase = function(dataset) {
+  console.log('about to populate');
+  this._dbPromise.then((db) => {
+    let trx = db.transaction('wittrs', 'readwrite');
+    let wittrStore = trx.objectStore('wittrs');
+
+    for(const post of dataset) {
+      wittrStore.put(post);
+    }
+
+    return trx.complete;
+  })
+  .then(() => {
+    console.log('database population completed');
+  });
+} 
+
 // called when the web socket sends message data
 IndexController.prototype._onSocketMessage = function(data) {
   var messages = JSON.parse(data);
+  this.populateDatabase(messages);
   this._postsView.addPosts(messages);
 };
