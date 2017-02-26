@@ -16,7 +16,7 @@ var dbPromise = idb.open('test-db', 5, function(upgradeDb) {
       var peopleStore = upgradeDb.transaction.objectStore('people');
       peopleStore.createIndex('age', 'age');
   }
-  
+
 });
 
 // read "hello" in "keyval"
@@ -90,7 +90,7 @@ dbPromise.then((db) => {
   return ageIndex.getAll();
 }).then((data) => {
   console.log('People sorted by age: ', data);
-});  
+});
 
 
 //make use of cursor

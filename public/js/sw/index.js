@@ -6,7 +6,7 @@ const urlsToCache = [
   'imgs/icon.png'
 ];
 
-const staticCacheName = 'wittr-static-v6'
+const staticCacheName = 'wittr-static-v8'
 
 self.addEventListener('install', (event) => {
   //event.waitUntil created room for syncronous code to be run.
@@ -19,7 +19,7 @@ self.addEventListener('install', (event) => {
 //testing stuff
 self.addEventListener('activate', (event) => {
   let currCacheName;
-  
+
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -28,9 +28,9 @@ self.addEventListener('activate', (event) => {
         }).map((cacheName) => {
           return caches.delete(cacheName);
         })
-      ); 
+      );
     })
-  ); 
+  );
 })
 
 self.addEventListener('fetch', function(event) {

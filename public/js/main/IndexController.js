@@ -13,11 +13,11 @@ export default function IndexController(container) {
 
   this._showCachedMessages().then(() => {
     this._openSocket();
-  })
+  });
 }
 
 IndexController.prototype._showCachedMessages = function() {
-  this._dbPromise.then((db) => {
+  return this._dbPromise.then((db) => {
     //if there is no db content yet, or posts are already being displayed.
     if(!db || this._postsView.showingPosts()) return;
 
@@ -25,13 +25,12 @@ IndexController.prototype._showCachedMessages = function() {
     let trx = db.transaction('wittrs');
     let messageStore = trx.objectStore('wittrs');
     let sortedMessages = messageStore.index('by-date');
-    return sortedMessages.getAll();
 
-  }).then((messages) => {
-    if(!messages) return;
-    this._postsView.addPosts(messages.reverse());
+    return sortedMessages.getAll().then((messages) => {
+      if(!messages) return;
+      this._postsView.addPosts(messages.reverse());
+    });
   });
-
 }
 
 IndexController.prototype._registerServiceWorker = function() {
@@ -43,7 +42,7 @@ IndexController.prototype._registerServiceWorker = function() {
       //page didnt load with a servic worker
     if(!navigator.serviceWorker.controller) {
       return;
-    } 
+    }
 
     if (reg.waiting) {
       this._updateReady(reg.waiting);
@@ -55,7 +54,7 @@ IndexController.prototype._registerServiceWorker = function() {
         this._trackSWInstall(reg.installing);
         return;
       });
-    } 
+    }
 
     reg.addEventListener('updatefound', (event) => {
       this._trackSWInstall(reg.installing);
@@ -70,7 +69,7 @@ IndexController.prototype._registerServiceWorker = function() {
 IndexController.prototype._trackServiceWorkerChange = function() {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     window.location.reload();
-  }) 
+  })
 }
 
 
@@ -155,15 +154,25 @@ IndexController.prototype.populateDatabase = function(dataset) {
     let wittrStore = trx.objectStore('wittrs');
 
     for(const post of dataset) {
+      console.log('post data: ', post)
       wittrStore.put(post);
     }
 
-    return trx.complete;
+    wittrStore.index('by-date').openCursor(null, 'prev').then((cursor) => {
+      //skip the 30 most recent posts
+      if(!cursor) return;
+      return cursor.advance(30);
+    })
+    .then(function deleteStale(cursor) {
+      if(!cursor) return;
+      cursor.delete();
+      return cursor.continue().then(deleteStale); //this call ensures the delete loop continues
+    });
   })
   .then(() => {
     console.log('database population completed');
   });
-} 
+}
 
 // called when the web socket sends message data
 IndexController.prototype._onSocketMessage = function(data) {
