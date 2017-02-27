@@ -10,6 +10,7 @@ export default function IndexController(container) {
   this._registerServiceWorker();
   this._trackServiceWorkerChange();
   this._dbPromise = this.openDatabase();
+  this._triggerSanitizeCache();
 
   this._showCachedMessages().then(() => {
     this._openSocket();
@@ -176,7 +177,32 @@ IndexController.prototype.populateDatabase = function(dataset) {
 
 // called when the web socket sends message data
 IndexController.prototype._onSocketMessage = function(data) {
-  var messages = JSON.parse(data);
+  let messages = JSON.parse(data);
   this.populateDatabase(messages);
   this._postsView.addPosts(messages);
 };
+
+IndexController.prototype._triggerSanitizeCache = function() {
+  let imageUrlsToCache = [];
+  this._dbPromise.then((db) => {
+    let trx = db.transaction('wittrs');
+    let messageStore = trx.objectStore('wittrs');
+
+    messageStore.getAll().then((messages) => {
+       messages.forEach((message) => {
+        if (message.photo) imageUrlsToCache.push(message.photo);
+        imageUrlsToCache.push(message.avatar);
+      });
+    });
+    return caches.open('wittr-image-cache');
+  }).then((cache) => {
+    cache.keys().then((cachedImages) => {
+      for (const image of cachedImages) {
+        let imageUrl = new URL(image.url);
+        if(!imageUrlsToCache.includes(imageUrl.pathname)) {
+          cache.delete(image);
+        }
+      }
+    });
+  });
+}
